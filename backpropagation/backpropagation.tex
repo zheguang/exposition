@@ -1,0 +1,119 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{physics}
+
+\newcommand{\gd}[2]{\underset{#2}{\grad}{#1}}
+\newcommand{\vectorspace}[1]{\mathcal{#1}}
+
+% Don't indent paragraph
+%\setlength\parindent{0em}
+
+
+\begin{document}
+
+\title{Backpropagation}
+\author{Zheguang Zhao}
+\date{}
+\maketitle
+
+We use $a$ for activations,  $x$ for the input examples, $y$ for the output, $\vb{w}$ for weights, $b$ for bias, $L$ for loss and $J$ for cost.
+We use round brackets for indices of input examples,  square brackets for indices of network layers, and triangular brackets for time steps in a RNN layer.
+For example, the $j$-th activation at the $l$-th layer induced by the $m$-th input example is $a^{[l](m)}_j$.
+
+The activation function is
+\begin{align*}
+	z_j^{[l](m)} &= w_j^{[l]T} x^{(m)} + b_j \\
+	a_j^{[l](m)} &= \sigma(z_j^{[l](m)})
+\end{align*}
+We often call $z$ the linear part.
+
+\section{Logistic regression}
+
+Let's first consider binary classification using logistic regression model.  This can be seen as a single-layer, single-activation neural network.
+So the activation function is just
+\begin{align*}
+	z &= \vb{w} \vdot \vb{x} + b \\
+	a &= \sigma(z)
+\end{align*}
+The activation is interpreted as the conditional probability that the class is 1:
+$$
+P(y = 1 | x) := a
+$$
+The output function can then be defined based on this conditional probability $a$:
+$$
+\hat{y} = 
+	\begin{cases}
+		1 & a > 1/2 \\
+		0 & \text{else}
+	\end{cases}
+$$
+The output is correct when $\hat{y} = y$.  But how correct is correct?  When $y = 1$, we would feel the activation of $a = 0.99$ better than $a = 0.51$, because the former is more ``certain'' about the correct prediction.  Similarly, the output is wrong when $\hat{y} \ne y$.  But how wrong is wrong?  When $y = 1$, we would feel that the activation of $a = 0.4$ better than the $a = 0.1$, because the latter is regretfully more ``certain'' about the wrong prediction.
+
+It is this notion of ``certainty about the correct prediction'' that we want to quantify as the (opposite of) loss.  Higher the certainty about the correct prediction, lower the loss.
+\begin{align*}
+- L(y, \hat{y}) &:= y\log(a) + (1 - y)\log(1 - a) \\
+L(y, \hat{y}) &= -\big( y\log(a) + (1 - y)\log(1 - a)\big)
+\end{align*}
+
+Note that the loss is by definition a measure of ``distance'' between $y$ and $\hat{y}$, but the function uses $a$ and $y$.
+
+The loss is calculated based on just one input example.  The total cost of the model is just the ``average loss'' from all examples:
+$$
+J := \frac{1}{m} \sum_{i}^{m} L(y^{(i)}, \hat{y}^{(i)}) = \frac{\vb{L} \vdot \vb{1}}{m}
+$$
+
+\subsection{Computation graph}
+Now we have just defined a \textbf{computation graph for cost} which starts from $w$ and $b$, and then with input $x$, to $a$, and then to $z$, then to $a$, then to $\hat{y}$, then to $L$, and finally to $J$.  Note this computation graph is just a function with one set of parameters $w$ and $b$, but is invoked $m$ times because there are $m$ inputs $x$ and labels $y$, and so results in $m$ number of $z$, $a$, $\hat{y}$ and $L$, and finally congregating to just one $J$.  
+
+There is also a \textbf{computation graph for prediction}, which is the same but without labels $y$ and so no $L$ and $J$, but only with output $\hat{y}$. 
+
+For training, we consider making $m$ predictions at one ``batch'' so we can get an average sense of the errors.  But for prediction, we usually consider making one prediction at a time.  So the computation graph for cost can be thought of as the computation graph for prediction being copied $m$ times, while keeping the same parameters $\vb{w}$ and $b$. 
+
+\subsection{Reducing mis-prediction}
+With randomly initialized activation function parameters, we will have some mis-predictions.  So $J$ will have some corresponding high value.  Reducing mis-predictions corresponds to reducing cost.\footnote{This error reduction is true at least for the training set, and we can only hope it generalizes to unseen examples.}  To reduce the cost, we need to adjust the individual loss $L$, which means to adjust the prediction $\hat{y}$, and that means the activation $a$, and that means the activation function parameters $w$ and $b$.  This backward chain of adjustment can be seen as going backward from the computation graph for training starting from $J$ and finishing at $w$ and $b$. 
+
+The most efficient adjustment we seek is along the direction of the gradient of the cost function.  That means we need to find the derivatives of $\pdv{J}{w}$ and $\pdv{J}{b}$.   What's the dimension of the gradient?  As many dimensions as there are of $w$. 
+
+To find the gradient we need to apply the chain rule.  We first note that $J$ is a function of $L^{(i)}$s:
+\begin{align*}
+	\dd{\vb{L}} := \dv{J}{\vb{L}} &= \qty(\pdv{J}{L^{(1)}}, \cdots, \pdv{J}{L^{(m)}}) = \frac{\vb{1}}{m}
+\end{align*}
+where 
+$$
+	\pdv{J}{L^{(i)}} = \frac{1}{m} \text{, for } i = 1, \cdots, m
+$$
+Then $L$ is a function of $a$, so:
+\begin{align*}
+	\dv{L}{a} = - \qty(\frac{y}{a} - \frac{1 - y}{1 - a})
+\end{align*}
+$a$ is a function of $z$, so:
+\begin{align*}
+	\dv{a}{z} = a(1 - a)
+\end{align*}
+$z$ is a linear function of $w$ and $b$, so:
+\begin{align*}
+	\pdv{z}{\vb{w}} &= \vb{x} \\
+	\pdv{z}{b} &= 1
+\end{align*}
+Note that the weights $\vb{w}$ are vectors whose dimension equals that of the input $\vb{x}$, such as the pixel dimension of an input image.
+
+So chain rule gives us:
+\begin{align*}
+	\dd{\vb{z}} &:= \dv{J}{\vb{z}} = \dv{\vb{a}}{\vb{z}} \dv{\vb{L}}{\vb{a}} \dv{J}{\vb{L}} \\
+	\dv{J}{\qty(\vb{w}, b)} &= \qty(\pdv{\vb{z}}{\vb{w}} \vdot \dd{\vb{z}}, \pdv{\vb{z}}{b} \vdot \dd{\vb{z}})
+\end{align*}
+It's worth unpacking the notations here.  It says the gradient of $J$ w.r.t. $\vb{w}$ is the dot product $\pdv{\vb{z}}{\vb{w}} \vdot \dd{\vb{z}}$.  We should expect it to have the dimension of $\vb{w}$.  What does the dot product mean?  It means for all the $m$ parts in gradient $\dd{\vb{z}}$, sum up all the effects caused by a tiny change of $\vb{w}$.  But where do the $m$ parts of gradient $\dd{\vb{z}}$ come from?  They come from the $m$ parts of gradient $\dd{\vb{L}}$.  Then why do we sum?  Well, because the same weights are used for $m$ different input examples to make predictions:
+\begin{align*}
+	\dd{z^{(i)}} &:= \dv{a^{(i)}}{z^{(i)}}\dv{L^{(i)}}{a^{(i)}}\pdv{J}{L^{(i)}} \\
+	\pdv{J}{\vb{w}} &= \pdv{z^{(1)}}{\vb{w}}\dd{z^{(1)}} + \cdots +  \pdv{z^{(m)}}{\vb{w}}\dd{z^{(m)}} \\
+		&= \mqty[\pdv{z^{(1)}}{\vb{w}} & \dots & \pdv{z^{(m)}}{\vb{w}}] \vdot \mqty[\dd{z^{(1)}} \\ \vdots \\ \dd{z^{(m)}}] \\
+		&= \pdv{\vb{z}}{\vb{w}} \vdot \dd{\vb{z}}
+\end{align*}
+Here, we can visualize $\pdv{J}{\vb{w}}$ as the product of a matrix of column vectors $\qty{\pdv{z^{(i)}}{\vb{w}}}$ and a column vector $\dd{\vb{z}}$.
+
+%Now the function sense of the model is clear.  For prediction, it maps from space $\vectorspace{X}$ and $\vectorspace{W}$ to the space of $\vectorspace{Y}$.  For cost function, it further maps to the space of $\vectorspace{J}$ which is just a scalar.  $\vectorspace{X}$ is $m \cross n_x$, $\vectorspace{W}$ is $n_w$ (and in this case $n_x = n_w$), and $\vectorspace{Y}$ is $m \cross n_y$ (and in this case $n_y = 1$).
+
+
+
+\end{document}

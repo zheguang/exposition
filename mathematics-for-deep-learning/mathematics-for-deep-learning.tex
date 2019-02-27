@@ -1,0 +1,143 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{physics}
+\usepackage{tikz}
+\usepackage{verbatim}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage[
+    type={CC},
+    modifier={by-nc-sa},
+    version={3.0},
+]{doclicense}
+
+\newcommand{\gd}[2]{\underset{#2}{\grad}{#1}}
+\newcommand{\vecspace}[1]{\mathcal{#1}}
+\newcommand{\numset}[1]{\mathbb{#1}}
+\newcommand{\goto}{\rightarrow}
+\newcommand{\compo}{\circ}
+
+
+% Don't indent paragraph
+%\setlength\parindent{0em}
+
+\begin{document}
+
+\title{Mathematics for Deep Learning}
+\author{Zheguang Zhao \\  \href{mailto:zheguang.zhao@gmail.com}{zheguang.zhao@gmail.com}}
+\date{Last updated: \today}
+\maketitle
+
+The goal of this article is to establish some mathematical background of one of the fundamental tool for building deep learning: the computation graphs.  Computation graphs have been used extensively not only to communicate different deep learning architectures but also to program as the building block in software frameworks such as TensorFlow and Keras.  One advantage of using computation graph is to be able to reason about neural networks at a level of abstraction that is clear and effective.  
+
+However the idea of computation graphs is not new.  It has roots in calculus, long before computers were invented.  So in the following I will first establish the correspondence between computation graphs and functions.  I will show how deep learning networks are just composition of functions, and composition of functions are just connectivity of multiple computation subgraphs.
+
+
+\section{Single-variable real-valued function}
+Let $z \in \numset{R}$, and $f(z)$ be a scalar map from scalars to scalars, i.e. $\numset{R} \rightarrow \numset{R}$:
+\begin{align}
+	\dv{f(z)}{z} := \lim_{\delta_x \goto 0} \frac{f(z + \delta_z) - f(z)}{\delta_z}
+\end{align}
+
+The computation graphs representation of $f(z)$ and its derivative $f'(z)$ are both one-to-one, which reflects that they are both scalar-to-scalar functions:
+\begin{figure}[h]
+	\centering
+		\centering
+		\begin{tikzpicture}
+			\draw (0, 0) node[circle, draw] (z){ $z$ }
+	 			(1, 0) node [circle, draw](f){ $f$ };
+			\draw[->] (z) -- (f);
+		\end{tikzpicture}
+		\caption{$f(z)$}
+	\caption{Single-variable real-valued function.}
+\end{figure}
+
+\section{Vector-valued functions}
+Let $t \in \numset{R}$, and $\vb{x} = \vb{f}(t) := \qty(x_1(t), x_2(t), \cdots, x_3(t))$ be a  map of scalars to vectors, i.e. $\numset{R} \rightarrow \numset{R}^3$ 
+
+The derivative of this vector-valued function w.r.t. its scalar variable is simply the the derivatives of its components w.r.t. this scalar variable:
+\begin{align}
+	\dv{\vb{x}}{t} := \qty(\dv{x_1}{t}, \dv{x_2}{t}, \dv{x_3}{t})
+\end{align}
+
+We need to use three nodes to denote the components of $\vb{x}$ in the computation graph:
+\begin{figure}[h]
+	\centering
+		\begin{tikzpicture}
+			\draw (0, 0) node[circle, draw] (t){ $t$ }
+	 			(1, 1) node [circle, draw](x1){ $x_1$ }
+				(1, 0) node [circle, draw](x2){ $x_2$ }
+				(1, -1) node [circle, draw](x3){ $x_3$ };
+			\draw[->] (t) -- (x1);
+			\draw[->] (t) -- (x2);
+			\draw[->] (t) -- (x3);
+		\end{tikzpicture}
+		\caption{Vector-valued function}
+	\label{fig:vector-valued-function}
+\end{figure}
+
+\section{Multi-variable real-valued functions}
+Let $z = f(\vb{x}) = f(x_1, x_2, x_3)$ be a map from $\numset{R}^3 \rightarrow \numset{R}$.
+
+The derivative of $z$ w.r.t. $\vb{x}$ is also called the gradient of $z$, denoted as $\grad_{\vb{x}}{z}$:
+\begin{align}
+	\grad_{\vb{x}}{z} = \dv{z}{\vb{x}} := \qty(\pdv{z}{x_1}, \pdv{z}{x_2}, \pdv{z}{x_3})
+\end{align}
+
+A multi-variable real-valued function can be represented as many-to-one graph:
+\begin{figure}[h]
+		\centering
+		\begin{tikzpicture}
+			\draw (0, 0) node[circle, draw](x1){$x_1$}
+				(0, 1) node[circle, draw](x2){$x_2$}
+				(0, 2) node[circle, draw](x3){$x_3$}
+				(1, 1) node[circle, draw](z){$z$};
+			\draw[->] (x1) -- (z);
+			\draw[->] (x2) -- (z);
+			\draw[->] (x3) -- (z);
+		\end{tikzpicture}
+		\caption{Multi-variable real-valued function}
+		\label{fig:multi-variable-real-valued-function}
+\end{figure}
+
+\section{Function composition}
+
+Let $\vb{x} \in \numset{R}^3$, $t, z \in \numset{R}$, $\vb{x} = \vb{f}(t)$ be a vector-valued function, $z = g(\vb(x))$ be.a multi-variable real-valued function.  Then we can compose a map $h = \vb{f} \compo g$ from $\numset{R} \rightarrow \numset{R}$ as $z = h(t) = \qty(\vb{f} \compo g)(t) = g(\vb{f}(t))$.
+
+The computation graph of $h$ is just a concatenation of the subgraphs of a vector-valued function $\vb{f}$ (Figure~\ref{fig:vector-valued-function}) and $g$ (Figure~\ref{fig:multi-variable-real-valued-function}):
+\begin{figure}[h]
+		\centering
+		\begin{tikzpicture}
+			\draw (0, 0) node[circle, draw] (t){ $t$ }
+	 			(1, 1) node [circle, draw](x1){ $x_1$ }
+				(1, 0) node [circle, draw](x2){ $x_2$ }
+				(1, -1) node [circle, draw](x3){ $x_3$ }
+				(2, 0) node[circle, draw](z){$z$};
+			\draw[->] (t) -- (x1);
+			\draw[->] (t) -- (x2);
+			\draw[->] (t) -- (x3);
+			\draw[->] (x1) -- (z);
+			\draw[->] (x2) -- (z);
+			\draw[->] (x3) -- (z);
+		\end{tikzpicture}
+		\caption{$z = h(t) = (\vb{f} \compo g)(t)$}
+\end{figure}
+
+What is the derivative of $z$ w.r.t. $t$? Because $h$ is a function composition, we need to use chain rule.
+\begin{align}
+	\dv{z}{t} &= \dv{h(t)}{t} \\
+	&= \dv{(\vb{f} \compo g)(t)}{t} \\
+	&= \dv{g(\vb{x})}{\vb{x}} \vdot \dv{\vb{f}(t)}{t} \\
+	&= \dv{z}{\vb{x}} \vdot \dv{\vb{x}}{t} \\
+	&= \qty(\pdv{z}{x_1}, \pdv{z}{x_2}, \pdv{z}{x_3}) \vdot \qty(\dv{x_1}{t}, \dv{x_2}{t}, \dv{x_3}{t}) \\
+	&= \pdv{z}{x_1}\dv{x_1}{t} + \pdv{z}{x_2}\dv{x_2}{t} + \pdv{z}{x_3}\dv{x_3}{t}
+\end{align}
+This shows that the derivative is also just the dot product of the two functions of the two subgraphs.  This establishes the correspondence between the graph composition and the function composition.
+
+
+\section{License}
+\doclicenseThis
+
+\end{document}
