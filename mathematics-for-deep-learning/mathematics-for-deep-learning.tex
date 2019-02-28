@@ -30,9 +30,13 @@
 \date{Last updated: \today}
 \maketitle
 
-The goal of this article is to establish some mathematical background of one of the fundamental tool for building deep learning: the computation graphs.  Computation graphs have been used extensively not only to communicate different deep learning architectures but also to program as the building block in software frameworks such as TensorFlow and Keras.  One advantage of using computation graph is to be able to reason about neural networks at a level of abstraction that is clear and effective.  
+\section{Introduction}
 
-However the idea of computation graphs is not new.  It has roots in calculus, long before computers were invented.  So in the following I will first establish the correspondence between computation graphs and functions.  I will show how deep learning networks are just composition of functions, and composition of functions are just connectivity of multiple computation subgraphs.
+The goal of this article is to establish some mathematical background of one of the fundamental tool for building deep learning: the computation graphs.  
+
+Computation graphs have been used extensively not only to communicate different deep learning architectures but also to program as the building block in software frameworks such as TensorFlow and Keras.  One advantage of using computation graph is to be able to think about neural networks at a level of abstraction that is clear and effective, while keeping the mathematical details just one step away. 
+
+However the idea of computation graphs is not new.  It has roots in calculus, long before computers were invented.  So in the following I will first establish the correspondence between computation graphs and functions.  Most importantly, I will show how deep learning networks are just composition of functions, and composition of functions is just connectivity of multiple computation subgraphs.  One consequence of this is that we can change a neural network by simply modifying its graph structure.
 
 
 \section{Single-variable real-valued function}
